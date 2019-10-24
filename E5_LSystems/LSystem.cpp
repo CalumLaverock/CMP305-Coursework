@@ -12,6 +12,11 @@ void LSystem::Run(const int count) {
 	}
 }
 
+void LSystem::ChangeAxiom(string new_axiom)
+{
+	m_Axiom = new_axiom;
+}
+
 void LSystem::AddRule(char predecessor, string successor) {
 	m_Rules.emplace(predecessor, successor);
 }

@@ -25,11 +25,14 @@ private:
 
 	void BuildLine();
 
-	LightShader*	shader;
-	LineMesh*		m_Line;
+	LightShader* shader;
+	LineMesh* m_Line;
 
-	Light*			light;
-	LSystem			lSystem;
+	Light* light;
+	LSystem lSystem;
+
+	int startingLine = 1;
+	int numIterate = 1;
 };
 
 #endif

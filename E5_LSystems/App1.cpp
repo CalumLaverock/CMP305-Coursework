@@ -120,7 +120,9 @@ void App1::gui()
 	ImGui::Text( "Camera Pos: (%.2f, %.2f, %.2f)", camera->getPosition().x, camera->getPosition().y, camera->getPosition().z );
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
-	ImGui::Text(lSystem.GetCurrentSystem().c_str());
+	//ImGui::Text(lSystem.GetCurrentSystem().c_str());
+	ImGui::InputInt("Length of starting line", &startingLine);
+	ImGui::InputInt("Number of LSystem Iterations", &numIterate);
 
 	if (ImGui::Button("Build Tree"))
 	{
@@ -134,6 +136,22 @@ void App1::gui()
 
 void App1::BuildLine()
 {
+	std::string line;
+
+	//set the initial state based on the input from the user
+	//the user can enter how long they wish the initial line to be
+	//this will soon be changed to the number of rooms in the dungeon
+	//TODO: change this to impact number of rooms in the dungeon
+	for (int i = 0; i < startingLine; i++)
+	{
+		line += 'F';
+	}
+
+	line += 'A';
+
+	lSystem.ChangeAxiom(line);
+	lSystem.Run(numIterate);
+
 	std::stack<XMVECTOR> savePoint;
 	std::stack<XMMATRIX> rotationStack;
 
