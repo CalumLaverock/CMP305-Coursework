@@ -137,6 +137,7 @@ void App1::gui()
 void App1::BuildLine()
 {
 	std::string line;
+	int val;
 
 	//set the initial state based on the input from the user
 	//the user can enter how long they wish the initial line to be
@@ -197,11 +198,14 @@ void App1::BuildLine()
 			break;
 
 		case '[':
+			//push the current position and rotation onto the stack so we can return to
+			//it later
 			savePoint.push(pos);
 			rotationStack.push(rotation);
 			break;
 
 		case ']':
+			//return the position and rotation to the values that were last pushed onto the stack
 			pos = savePoint.top();
 			savePoint.pop();
 
@@ -213,15 +217,27 @@ void App1::BuildLine()
 			break;
 
 		case '&':
-			rotation = XMMatrixRotationAxis(fwdX, AI_DEG_TO_RAD((rand() % 15) + 10)) * rotation; //This one needs to be rotated in this order, for some reason...
+			//pick a random number between 10 and 25 then rotate around the x-axis 
+			//by the chosen number of degrees 
+			val = ((rand() % 15) + 10);
+
+			rotation = XMMatrixRotationAxis(fwdX, AI_DEG_TO_RAD(val)) * rotation; //This one needs to be rotated in this order, for some reason...
 			break;
 
 		case '/':
-			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD((rand() % 30) + 90));
+			//pick a random number between 60 and 120 then rotate around the current direction 
+			//by the chosen number of degrees
+			val = ((rand() % 60) + 60);
+
+			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(val));
 			break;
 
 		case '\\':
-			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(-(rand() % 30) + 90));
+			//pick a random number between -120 and -60 then rotate around the current direction 
+			//by the chosen number of degrees
+			val = -((rand() % 60) + 60);
+
+			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(val));
 			break;
 
 		}
