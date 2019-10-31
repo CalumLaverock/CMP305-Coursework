@@ -7,6 +7,8 @@
 #include "LightShader.h"
 #include "LineMesh.h"
 #include "LSystem.h"
+#include "InstanceShader.h"
+#include "InstancedCubeMesh.h"
 
 class App1 : public BaseApplication
 {
@@ -24,12 +26,16 @@ protected:
 private:
 
 	void BuildLine();
+	void BuildCubeInstances();
 
 	LightShader* shader;
 	LineMesh* m_Line;
 
 	Light* light;
 	LSystem lSystem;
+
+	InstanceShader* m_InstanceShader;
+	InstancedCubeMesh* m_InstancedCube;
 
 	int startingLine = 1;
 	int numIterate = 1;

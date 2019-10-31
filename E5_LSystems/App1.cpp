@@ -7,6 +7,7 @@ App1::App1():
 	lSystem("FA")
 {
 	m_Line = nullptr;
+	m_InstanceShader = nullptr;
 	shader = nullptr;
 }
 
@@ -16,10 +17,14 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	BaseApplication::init(hinstance, hwnd, screenWidth, screenHeight, in, VSYNC, FULL_SCREEN);
 
 	textureMgr->loadTexture(L"grass", L"res/grass.png");
+	textureMgr->loadTexture(L"brick", L"res/Brick.png");
 
 	// Create Mesh object and shader object
 	m_Line = new LineMesh(renderer->getDevice(), renderer->getDeviceContext());
 	shader = new LightShader(renderer->getDevice(), hwnd);
+
+	m_InstancedCube = new InstancedCubeMesh(renderer->getDevice(), renderer->getDeviceContext(), 1);
+	m_InstanceShader = new InstanceShader(renderer->getDevice(), hwnd);
 
 	light = new Light;
 	light->setAmbientColour( 0.25f, 0.25f, 0.25f, 1.0f );
@@ -98,6 +103,10 @@ bool App1::render()
 		m_Line->sendData(renderer->getDeviceContext(), i);
 		shader->render(renderer->getDeviceContext(), m_Line->getIndexCount());
 	}
+
+	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"brick"), light);
+	m_InstancedCube->sendDataInstanced(renderer->getDeviceContext());
+	m_InstanceShader->renderInstanced(renderer->getDeviceContext(), m_InstancedCube->getIndexCount(), m_InstancedCube->GetInstanceCount());
 	
 	// Render GUI
 	gui();
@@ -120,7 +129,7 @@ void App1::gui()
 	ImGui::Text( "Camera Pos: (%.2f, %.2f, %.2f)", camera->getPosition().x, camera->getPosition().y, camera->getPosition().z );
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
-	//ImGui::Text(lSystem.GetCurrentSystem().c_str());
+	ImGui::Text(lSystem.GetCurrentSystem().c_str());
 	ImGui::InputInt("Length of starting line", &startingLine);
 	ImGui::InputInt("Number of LSystem Iterations", &numIterate);
 
@@ -134,8 +143,45 @@ void App1::gui()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
+//Render a bunch of instanced cubes
+void App1::BuildCubeInstances() {
+
+	const int width = 64;
+	const int maxCubes = width * width * width;
+
+	XMFLOAT3* pos = new XMFLOAT3[maxCubes];
+
+	int instanceCount = 0;
+	//Create two crossing sine waves and only draw the cubes that are under the "height" value
+	for (int i = 0; i < maxCubes; i++) {
+		float y1 = sin((float)(i % width) / 8.0f);
+		y1 += 1.0f;
+		y1 *= 16.f;
+
+		float y2 = sin((float)(i / (width * width)) / 4.0f);
+		y2 += 1.0f;
+		y2 *= 16.f;
+
+		if ((i / width) % width < y1 && (i / width) % width < y2) {
+			pos[instanceCount] = XMFLOAT3(2.0f * (i % width), 2.0f * ((i / width) % width), 2.0f * (i / (width * width)));
+			instanceCount++;
+		}
+	}
+
+	m_InstancedCube->initBuffers(renderer->getDevice(), pos, instanceCount);
+
+	delete[] pos;
+	pos = 0;
+}
+
 void App1::BuildLine()
 {
+	const int width = 64;
+	const int maxCubes = width * width * width * width;
+	int instanceCount = 0;
+
+	XMFLOAT3* cubePos = new XMFLOAT3[maxCubes];
+
 	std::string line;
 	int val;
 
@@ -185,16 +231,27 @@ void App1::BuildLine()
 	rotationStack.push(rotation);
 	savePoint.push(pos);
 
-	//Go through the L-System string
+	//Go through the L-System string and perform some action depending on which
+	//character is encountered
 	for (int i = 0; i < systemString.length(); i++) {
 
 		switch (systemString[i]) {
 		case 'F':
+			//Place at the current position then increase the position in the direction the
+			//current branch is pointing
+			XMFLOAT3 currentPos;
+			XMStoreFloat3(&currentPos, pos);
+
 			dir = XMVector3Transform(fwdY, rotation);
-			XMStoreFloat3(&start, pos);			//Store the start position
-			pos += dir;							//Move the position marker
-			XMStoreFloat3(&end, pos);			//Store the end position
-			m_Line->AddLine(start, end);		//Create the line
+			cubePos[instanceCount] = currentPos;
+
+			//XMStoreFloat3(&start, pos);		
+			pos += dir * 2.f;				//Multiply direction by 2 as cubes are 2 units wide
+			//XMStoreFloat3(&end, pos);			
+			//m_Line->AddLine(start, end);	
+
+
+			instanceCount++;
 			break;
 
 		case '[':
@@ -242,5 +299,10 @@ void App1::BuildLine()
 
 		}
 	}
+
+	m_InstancedCube->initBuffers(renderer->getDevice(), cubePos, instanceCount);
+
+	delete[] cubePos;
+	cubePos = 0;
 }
 
