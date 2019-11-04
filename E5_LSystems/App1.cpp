@@ -4,7 +4,7 @@
 #include <stack>
 
 App1::App1():
-	lSystem("FA")
+	lSystem("SFA")
 {
 	m_Line = nullptr;
 	m_InstanceShader = nullptr;
@@ -189,6 +189,8 @@ void App1::BuildLine()
 	//the user can enter how long they wish the initial line to be
 	//this will soon be changed to the number of rooms in the dungeon
 	//TODO: change this to impact number of rooms in the dungeon
+	line += 'S';
+
 	for (int i = 0; i < startingLine; i++)
 	{
 		line += 'F';
@@ -227,7 +229,6 @@ void App1::BuildLine()
 	//Start and end of each line segment
 	XMFLOAT3 start, end;
 
-
 	rotationStack.push(rotation);
 	savePoint.push(pos);
 
@@ -237,7 +238,7 @@ void App1::BuildLine()
 
 		switch (systemString[i]) {
 		case 'F':
-			//Place at the current position then increase the position in the direction the
+			//Place a cube at the current position then increase the position in the direction the
 			//current branch is pointing
 			XMFLOAT3 currentPos;
 			XMStoreFloat3(&currentPos, pos);
@@ -249,7 +250,6 @@ void App1::BuildLine()
 			pos += dir * 2.f;				//Multiply direction by 2 as cubes are 2 units wide
 			//XMStoreFloat3(&end, pos);			
 			//m_Line->AddLine(start, end);	
-
 
 			instanceCount++;
 			break;
@@ -295,6 +295,95 @@ void App1::BuildLine()
 			val = -((rand() % 60) + 60);
 
 			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(val));
+			break;
+
+		case 'S':
+			XMVECTOR corner;
+			XMVECTOR corners[4];
+			corner = corners[0] = XMVector3Transform(pos, XMMatrixTranslation(-5, 0, 0));
+			//corner = corners[0];
+
+			//XMStoreFloat3(&start, corner);
+			corners[1] = corner = XMVector3Transform(corner, XMMatrixTranslation(10, 0, 0));
+			//XMStoreFloat3(&end, corner);
+			//corners[1] = corner;
+			//m_Line->AddLine(start, end);
+
+			//start = end;
+			corners[2] = corner = XMVector3Transform(corner, XMMatrixTranslation(0, 10, 0));
+			//XMStoreFloat3(&end, corner);
+			//corners[2] = corner;
+			//m_Line->AddLine(start, end);
+
+			//start = end;
+			corners[3] = corner = XMVector3Transform(corner, XMMatrixTranslation(-10, 0, 0));
+			//XMStoreFloat3(&end, corner);
+			//corners[3] = corner;
+			//m_Line->AddLine(start, end);
+
+			XMVECTOR temp = corners[3] - corners[2];
+			temp = XMVector3Length(temp);
+			XMStoreFloat3(&start, temp);
+
+			pos = XMVector3Transform(corners[2], XMMatrixTranslation(-start.x / 2, 0, 0));
+
+			/*XMFLOAT3 tempPos;
+			tempPos.x = (start.x + end.x) / 2;
+			tempPos.y = (start.y + end.y) / 2;
+			tempPos.z = (start.z + end.z) / 2;*/
+
+			//pos = XMLoadFloat3(&tempPos);
+
+			//start = end;
+			//XMStoreFloat3(&end, corners[0]);
+			//m_Line->AddLine(start, end);
+
+			XMFLOAT3 lengths[4];
+			XMVECTOR walls[4];
+			walls[0] = XMVECTOR(corners[0] - corners[1]);
+			walls[1] = XMVECTOR(corners[1] - corners[2]);
+			walls[2] = XMVECTOR(corners[2] - corners[3]);
+			walls[3] = XMVECTOR(corners[3] - corners[0]);
+
+			XMStoreFloat3(&lengths[0], XMVector3Length(walls[0]));
+			XMStoreFloat3(&lengths[1], XMVector3Length(walls[1]));
+			XMStoreFloat3(&lengths[2], XMVector3Length(walls[2]));
+			XMStoreFloat3(&lengths[3], XMVector3Length(walls[3]));
+
+			float longestVector = lengths[0].x;
+
+			for (int i = 1; i < 4; i++)
+			{
+				if (longestVector < lengths[i].x)
+				{
+					longestVector = lengths[i].x;
+				}
+			}
+
+			int longest;
+			longest = ceil(longestVector);
+
+			for (int i = 0; i < longest; i++)
+			{
+				XMVECTOR pos[4];
+				XMFLOAT3 currentPos;
+				pos[0] = corners[0];
+				pos[1] = corners[1];
+				pos[2] = corners[2];
+				pos[3] = corners[3];
+
+				for (int j = 0; j < 4; j++)
+				{
+					if (XMVector3Less(pos[j], walls[j]))
+					{
+						XMStoreFloat3(&currentPos, pos[j]);
+						cubePos[instanceCount] = currentPos;
+						instanceCount++;
+
+						pos[j] += XMVector3Normalize(walls[j]) * 2;
+					}
+				}
+			}
 			break;
 
 		}
