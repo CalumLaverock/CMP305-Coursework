@@ -340,8 +340,8 @@ void App1::BuildLine()
 
 			XMFLOAT3 lengths[4];
 			XMVECTOR walls[4];
-			walls[0] = XMVECTOR(corners[0] - corners[1]);
-			walls[1] = XMVECTOR(corners[1] - corners[2]);
+			walls[0] = XMVECTOR(corners[1] - corners[0]);
+			walls[1] = XMVECTOR(corners[2] - corners[1]);
 			walls[2] = XMVECTOR(corners[2] - corners[3]);
 			walls[3] = XMVECTOR(corners[3] - corners[0]);
 
@@ -361,26 +361,26 @@ void App1::BuildLine()
 			}
 
 			int longest;
-			longest = ceil(longestVector);
+			longest = ceil(longestVector) / 2;
+
+			XMVECTOR pos[4];
+			XMFLOAT3 roomCornerPos;
+			pos[0] = corners[0];
+			pos[1] = corners[1];
+			pos[2] = corners[3];
+			pos[3] = corners[0];
 
 			for (int i = 0; i < longest; i++)
 			{
-				XMVECTOR pos[4];
-				XMFLOAT3 currentPos;
-				pos[0] = corners[0];
-				pos[1] = corners[1];
-				pos[2] = corners[2];
-				pos[3] = corners[3];
-
 				for (int j = 0; j < 4; j++)
 				{
-					if (XMVector3Less(pos[j], walls[j]))
+					if (XMVector3LessOrEqual(pos[j], walls[j] + pos[j]))
 					{
-						XMStoreFloat3(&currentPos, pos[j]);
-						cubePos[instanceCount] = currentPos;
+						XMStoreFloat3(&roomCornerPos, pos[j]);
+						cubePos[instanceCount] = roomCornerPos;
 						instanceCount++;
 
-						pos[j] += XMVector3Normalize(walls[j]) * 2;
+						pos[j] += (XMVector3Normalize(walls[j]) * 2);
 					}
 				}
 			}
