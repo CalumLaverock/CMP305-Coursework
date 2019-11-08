@@ -4,7 +4,7 @@
 #include <stack>
 
 App1::App1():
-	lSystem("SFA")
+	lSystem("SFFFA")
 {
 	m_Line = nullptr;
 	m_InstanceShader = nullptr;
@@ -35,7 +35,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	camera->setRotation(0.0f, 0.0f, 0.0f);
 	
 	//Build the LSystem
-	lSystem.AddRule('A', "[&FA][&/FA][&\\FA]");
+	lSystem.AddRule('A', "SFFFA");
 	lSystem.Run(8);
 
 	//Build the lines to be rendered
@@ -217,14 +217,17 @@ void App1::BuildLine()
 	p = XMFLOAT3(0, 1, 0);
 		XMVECTOR dir = XMLoadFloat3(&p);	//Current direction
 
-	p = XMFLOAT3(0, 1, 0);
-		XMVECTOR fwdY = XMLoadFloat3(&p);	//Y Rotation axis
-
 	p = XMFLOAT3(1, 0, 0);
 		XMVECTOR fwdX = XMLoadFloat3(&p);	//X Rotation axis
 
-	//A matrix that stores the current rotation state
-	XMMATRIX rotation = XMMatrixRotationAxis(fwdY, 0.0f);
+	p = XMFLOAT3(0, 1, 0);
+		XMVECTOR fwdY = XMLoadFloat3(&p);	//Y Rotation axis
+
+	p = XMFLOAT3(0, 0, 1);
+		XMVECTOR fwdZ = XMLoadFloat3(&p);	//Y Rotation axis
+											
+											//A matrix that stores the current rotation state
+	XMMATRIX rotation = XMMatrixRotationAxis(fwdZ, 0.0f);
 
 	//Start and end of each line segment
 	XMFLOAT3 start, end;
@@ -243,7 +246,7 @@ void App1::BuildLine()
 			XMFLOAT3 currentPos;
 			XMStoreFloat3(&currentPos, pos);
 
-			dir = XMVector3Transform(fwdY, rotation);
+			dir = XMVector3Transform(fwdZ, rotation);
 			cubePos[instanceCount] = currentPos;
 
 			//XMStoreFloat3(&start, pos);		
@@ -270,7 +273,7 @@ void App1::BuildLine()
 			rotationStack.pop();
 
 			//Reset the direction back to what it would have been here, based on the rotation
-			dir = XMVector3Transform(fwdY, rotation);
+			dir = XMVector3Transform(fwdZ, rotation);
 			break;
 
 		case '&':
@@ -300,90 +303,24 @@ void App1::BuildLine()
 		case 'S':
 			XMVECTOR corner;
 			XMVECTOR corners[4];
-			corner = corners[0] = XMVector3Transform(pos, XMMatrixTranslation(-5, 0, 0));
-			//corner = corners[0];
+			corner = corners[0] = XMVector3Transform(pos, XMMatrixTranslation(-20, 0, 0));  //Bottom left
 
-			//XMStoreFloat3(&start, corner);
-			corners[1] = corner = XMVector3Transform(corner, XMMatrixTranslation(10, 0, 0));
-			//XMStoreFloat3(&end, corner);
-			//corners[1] = corner;
-			//m_Line->AddLine(start, end);
+			corners[1] = corner = XMVector3Transform(corner, XMMatrixTranslation(40, 0, 0)); //Bottom right
 
-			//start = end;
-			corners[2] = corner = XMVector3Transform(corner, XMMatrixTranslation(0, 10, 0));
-			//XMStoreFloat3(&end, corner);
-			//corners[2] = corner;
-			//m_Line->AddLine(start, end);
+			corners[2] = corner = XMVector3Transform(corner, XMMatrixTranslation(0, 0, 30)); //Top right
 
-			//start = end;
-			corners[3] = corner = XMVector3Transform(corner, XMMatrixTranslation(-10, 0, 0));
-			//XMStoreFloat3(&end, corner);
-			//corners[3] = corner;
-			//m_Line->AddLine(start, end);
+			corners[3] = corner = XMVector3Transform(corner, XMMatrixTranslation(-40, 0, 0)); //Top left
 
+			//Set the pos vector back to the centre of the room on the back wall
+			//This will eventually be replaced by picking a random position on a wall
 			XMVECTOR temp = corners[3] - corners[2];
 			temp = XMVector3Length(temp);
 			XMStoreFloat3(&start, temp);
 
 			pos = XMVector3Transform(corners[2], XMMatrixTranslation(-start.x / 2, 0, 0));
 
-			/*XMFLOAT3 tempPos;
-			tempPos.x = (start.x + end.x) / 2;
-			tempPos.y = (start.y + end.y) / 2;
-			tempPos.z = (start.z + end.z) / 2;*/
-
-			//pos = XMLoadFloat3(&tempPos);
-
-			//start = end;
-			//XMStoreFloat3(&end, corners[0]);
-			//m_Line->AddLine(start, end);
-
-			XMFLOAT3 lengths[4];
-			XMVECTOR walls[4];
-			walls[0] = XMVECTOR(corners[1] - corners[0]);
-			walls[1] = XMVECTOR(corners[2] - corners[1]);
-			walls[2] = XMVECTOR(corners[2] - corners[3]);
-			walls[3] = XMVECTOR(corners[3] - corners[0]);
-
-			XMStoreFloat3(&lengths[0], XMVector3Length(walls[0]));
-			XMStoreFloat3(&lengths[1], XMVector3Length(walls[1]));
-			XMStoreFloat3(&lengths[2], XMVector3Length(walls[2]));
-			XMStoreFloat3(&lengths[3], XMVector3Length(walls[3]));
-
-			float longestVector = lengths[0].x;
-
-			for (int i = 1; i < 4; i++)
-			{
-				if (longestVector < lengths[i].x)
-				{
-					longestVector = lengths[i].x;
-				}
-			}
-
-			int longest;
-			longest = ceil(longestVector) / 2;
-
-			XMVECTOR pos[4];
-			XMFLOAT3 roomCornerPos;
-			pos[0] = corners[0];
-			pos[1] = corners[1];
-			pos[2] = corners[3];
-			pos[3] = corners[0];
-
-			for (int i = 0; i < longest; i++)
-			{
-				for (int j = 0; j < 4; j++)
-				{
-					if (XMVector3LessOrEqual(pos[j], walls[j] + pos[j]))
-					{
-						XMStoreFloat3(&roomCornerPos, pos[j]);
-						cubePos[instanceCount] = roomCornerPos;
-						instanceCount++;
-
-						pos[j] += (XMVector3Normalize(walls[j]) * 2);
-					}
-				}
-			}
+			//Build a room using the corners provided
+			BuildRoom(corners, cubePos, instanceCount, 10.f);
 			break;
 
 		}
@@ -395,3 +332,111 @@ void App1::BuildLine()
 	cubePos = 0;
 }
 
+//Corners must be in order bottom left -> bottom right -> top right -> top left
+void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* vectorPos, int& cubeInstance, float height)
+{
+	XMFLOAT3 lengths[4];
+	XMVECTOR walls[4];
+
+	walls[0] = XMVECTOR(corners[1] - corners[0]);
+	walls[1] = XMVECTOR(corners[2] - corners[1]);
+	walls[2] = XMVECTOR(corners[2] - corners[3]);
+	walls[3] = XMVECTOR(corners[3] - corners[0]);
+
+	XMStoreFloat3(&lengths[0], XMVector3Length(walls[0]));
+	XMStoreFloat3(&lengths[1], XMVector3Length(walls[1]));
+	XMStoreFloat3(&lengths[2], XMVector3Length(walls[2]));
+	XMStoreFloat3(&lengths[3], XMVector3Length(walls[3]));
+
+	float longestVector = lengths[0].x;
+
+	for (int i = 1; i < 4; i++)
+	{
+		if (longestVector < lengths[i].x)
+		{
+			longestVector = lengths[i].x;
+		}
+	}
+
+	int longest;
+	longest = ceil(longestVector);
+
+	XMVECTOR pos[4];
+	XMVECTOR target[4];
+	XMVECTOR distanceLeft;
+
+	XMFLOAT3 roomCornerPos;
+	pos[0] = corners[0];
+	pos[1] = corners[1];
+	pos[2] = corners[3];
+	pos[3] = corners[0];
+
+	for (int i = 0; i < 4; i++)
+	{
+		target[i] = walls[i] + pos[i];
+	}
+
+	for (int i = 0; i < longest / 2; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			distanceLeft = target[j] - pos[j];
+			distanceLeft = XMVector3Normalize(distanceLeft);
+
+			//Pretty much this whole if statement is super janky, please fix this if
+			//you have time that said.... IT WORKS!
+			if (XMVector3GreaterOrEqual(distanceLeft, XMVECTOR{ 0,0,0 }))
+			{
+				//Build the floor
+				if (j == 3)
+				{
+					XMVECTOR floorBuilder = pos[3];
+					XMFLOAT3 floorPos;
+
+					for (int k = 0; k < lengths[0].x / 2; k++)
+					{
+						XMStoreFloat3(&floorPos, floorBuilder);
+						vectorPos[cubeInstance] = floorPos;
+						cubeInstance++;
+
+						floorBuilder += XMVECTOR{ 2,0,0 };
+					}
+				}
+
+				//Build the walls
+				for (int k = 0; k < (int)height / 2; k++)
+				{
+					XMStoreFloat3(&roomCornerPos, pos[j]);
+					vectorPos[cubeInstance] = roomCornerPos;
+					cubeInstance++;
+
+					pos[j] += XMVECTOR{ 0,2,0 };
+				}
+
+				//Build the roof
+				if (j == 3)
+				{
+					XMVECTOR roofBuilder = pos[3];
+					XMFLOAT3 roofPos;
+
+					for (int k = 0; k < lengths[0].x / 2; k++)
+					{
+						XMStoreFloat3(&roofPos, roofBuilder);
+						vectorPos[cubeInstance] = roofPos;
+						cubeInstance++;
+
+						roofBuilder += XMVECTOR{ 2,0,0 };
+					}
+				}
+
+				pos[j] -= XMVECTOR{ 0,height,0 };
+
+				//Builds the floor out, kinda janky with some magic numbers
+				//might be able to fix this later
+				
+
+				pos[j] += (XMVector3Normalize(walls[j]) * 2);
+			}
+		}
+	}
+}

@@ -27,6 +27,7 @@ private:
 
 	void BuildLine();
 	void BuildCubeInstances();
+	void BuildRoom(XMVECTOR*, XMFLOAT3*, int&, float);
 
 	LightShader* shader;
 	LineMesh* m_Line;
