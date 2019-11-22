@@ -27,7 +27,8 @@ private:
 
 	void BuildLine();
 	void BuildCubeInstances();
-	void BuildRoom(XMVECTOR*, XMFLOAT3*, int&, float);
+	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMVECTOR, XMVECTOR, int&, float);
+	void BuildTunnel(XMVECTOR&, XMVECTOR, XMFLOAT3*, int&);
 
 	LightShader* shader;
 	LineMesh* m_Line;
@@ -40,6 +41,7 @@ private:
 
 	int startingLine = 1;
 	int numIterate = 1;
+	char currentSystemChar;
 };
 
 #endif
