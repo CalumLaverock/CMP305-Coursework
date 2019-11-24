@@ -10,6 +10,8 @@
 #include "InstanceShader.h"
 #include "InstancedCubeMesh.h"
 
+using namespace DirectX;
+
 class App1 : public BaseApplication
 {
 public:
@@ -27,8 +29,8 @@ private:
 
 	void BuildLine();
 	void BuildCubeInstances();
-	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMVECTOR, XMVECTOR, int&, float);
-	void BuildTunnel(XMVECTOR&, XMVECTOR, XMFLOAT3*, int&);
+	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMVECTOR, int&, float);
+	void BuildTunnel(XMVECTOR, XMFLOAT3*, int&);
 
 	LightShader* shader;
 	LineMesh* m_Line;
@@ -42,6 +44,8 @@ private:
 	int startingLine = 1;
 	int numIterate = 1;
 	char currentSystemChar;
+	XMVECTOR fwd, up, right;
+	XMVECTOR startPosition = { 0,0,0 };
 };
 
 #endif
