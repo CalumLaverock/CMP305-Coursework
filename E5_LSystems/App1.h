@@ -45,6 +45,7 @@ private:
 	int numIterate = 1;
 	char currentSystemChar;
 	XMVECTOR fwd, up, right;
+	XMVECTOR endFwd, endRight;
 	XMVECTOR startPosition = { 0,0,0 };
 };
 

@@ -38,7 +38,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	camera->setRotation(0.0f, 0.0f, 0.0f);
 	
 	//Build the LSystem
-	lSystem.AddRule('A', "C{&F}C");
+	lSystem.AddRule('A', "{&F}R{&F}A");
 	lSystem.AddRule('C', "A{&F}R{&F}A");
 	lSystem.Run(8);
 
@@ -192,7 +192,7 @@ void App1::BuildLine()
 	int val;
 
 	//The user can select how many rooms they want to have in the dungeon
-	line += "S{&F}R{&F}";
+	line += "S{&F}R{&F}A";
 
 	/*for (int i = 0; i < startingLine; i++)
 	{
@@ -343,28 +343,32 @@ void App1::BuildLine()
 			//make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
 			//on either side of the wall that is not allowed to be the exit point
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
+			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
 			startPosition = pos;
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
 			endPosition = pos;
 
-			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
-
 			switch (endCornerOne)
 			{
 			case 1:
-				fwd = right;
+				endFwd = right;
 				break;
 			case 2:
-				fwd = fwd;
+				endFwd = fwd;
 				break;
 			case 3:
-				fwd = right * -1;
+				endFwd = right * -1;
 				break;
 			}
 
-			right = XMVector3Cross(up, fwd);
+			endRight = XMVector3Cross(up, endFwd);
+
+			//Build a room using the corners provided
+			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+
+			fwd = endFwd;
+			right = endRight;
 			//Set the next start position to the current end position so that the tunnel knows where to draw from
 			startPosition = endPosition;
 			break;
@@ -410,27 +414,31 @@ void App1::BuildLine()
 			//make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
 			//on either side of the wall that is not allowed to be the exit point
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
+			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
 			endPosition = pos;
 
-			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
-
 			switch (endCornerOne)
 			{
 			case 1:
-				fwd = right;
+				endFwd = right;
 				break;
 			case 2:
-				fwd = fwd;
+				endFwd = fwd;
 				break;
 			case 3:
-				fwd = right * -1;
+				endFwd = right * -1;
 				break;
 			}
 
-			right = XMVector3Cross(up, fwd);
+			endRight = XMVector3Cross(up, endFwd);
+
+			//Build a room using the corners provided
+			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+
+			fwd = endFwd;
+			right = endRight;
 			//Set the next start position to the current end position in the case that 2 rooms are placed one after the other
 			startPosition = endPosition;
 			break;
@@ -476,27 +484,31 @@ void App1::BuildLine()
 			//make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
 			//on either side of the wall that is not allowed to be the exit point
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
+			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
 			endPosition = pos;
 
-			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
-
 			switch (endCornerOne)
 			{
 			case 1:
-				fwd = right;
+				endFwd = right;
 				break;
 			case 2:
-				fwd = fwd;
+				endFwd = fwd;
 				break;
 			case 3:
-				fwd = right * -1;
+				endFwd = right * -1;
 				break;
 			}
 
-			right = XMVector3Cross(up, fwd);
+			endRight = XMVector3Cross(up, endFwd);
+
+			//Build a room using the corners provided
+			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+
+			fwd = endFwd;
+			right = endRight;
 			break;
 		}
 		}
@@ -591,24 +603,67 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos
 				for (int k = 0; k < (int)height / 2; k++)
 				{
 					XMStoreFloat3(&posFloat, pos[j]);
+					//calculate the components of the current position and the end/start positions
+					//on the fwd axis of the end/start positions
+					XMVECTOR posEndFwd = XMVectorMultiply(endFwd, pos[j]);
+					XMVECTOR endPosEndFwd = XMVectorMultiply(endFwd, endPos);
 
-					if ((((posFloat.x > endPosFloat.x + 4 || posFloat.x < endPosFloat.x - 4) ||
-						 (posFloat.z > endPosFloat.z + 4 || posFloat.z < endPosFloat.z - 4) ||
-						 (posFloat.y > endPosFloat.y + 6 || posFloat.y < endPosFloat.y))) && 
-						 (currentSystemChar != 'E'))
+					XMVECTOR posStartFwd = XMVectorMultiply(fwd, pos[j]);
+					XMVECTOR startPosStartFwd = XMVectorMultiply(fwd, startPosition);
+					
+					//Negative right vectors will swap the comparison values
+					//e.g. rightPosEnd + (endRight * 4) will become rightPosEnd - endRight * 4
+					//Taking the absolute value of the right vector will fix this
+					endRight = XMVectorAbs(endRight);
+					XMVECTOR startRight = XMVectorAbs(right);
+
+					//calculate the components of the current position and the end/start positions
+					//on the right axis of the end/start positions
+					XMVECTOR posEndRight = XMVectorMultiply(endRight, pos[j]);
+					XMVECTOR endPosEndRight = XMVectorMultiply(endRight, endPos);
+
+					XMVECTOR posStartRight = XMVectorMultiply(right, pos[j]);
+					XMVECTOR startPosStartRight = XMVectorMultiply(right, startPosition);
+
+					//If both points have same component on fwd axis then both points are on the same wall
+					if (XMVector3Equal(posEndFwd, endPosEndFwd))
+					{
+						//If the current position is greater/less than the end position +/- 4 on the right axis
+						//then draw a cube AND we are not in the End room, else don't draw a cube
+						if ((XMVector3GreaterOrEqual(posEndRight, endPosEndRight + (endRight * 4)) || XMVector3LessOrEqual(posEndRight, endPosEndRight - (endRight * 4))) ||
+							(posFloat.y > endPosFloat.y + 6))
+						{
+							cubePositions[cubeInstances] = posFloat;
+							cubeInstances++;
+						}
+						else if (currentSystemChar == 'E')
+						{
+							cubePositions[cubeInstances] = posFloat;
+							cubeInstances++;
+						}
+					}
+					else if (XMVector3Equal(posStartFwd, startPosStartFwd))
+					{
+						//If the current position is greater/less than the start position +/- 4 on the right axis
+						//then draw a cube AND we are not in the Start room, else don't draw a cube
+						if ((XMVector3GreaterOrEqual(posStartRight, startPosStartRight + (right * 4)) || XMVector3LessOrEqual(posStartRight, startPosStartRight - (right * 4))) ||
+							(posFloat.y > startPosFloat.y + 6))
+						{
+							cubePositions[cubeInstances] = posFloat;
+							cubeInstances++;
+						}
+						else if (currentSystemChar == 'S')
+						{
+							cubePositions[cubeInstances] = posFloat;
+							cubeInstances++;
+						}
+					}
+					else
 					{
 						cubePositions[cubeInstances] = posFloat;
 						cubeInstances++;
 					}
-					else if ((((posFloat.x > startPosFloat.x + 4 || posFloat.x < startPosFloat.x - 4) ||
-							  (posFloat.z > startPosFloat.z + 4 || posFloat.z < startPosFloat.z - 4) ||
-							  (posFloat.y > startPosFloat.y + 6 || posFloat.y < startPosFloat.y))) &&
-							  (currentSystemChar != 'S'))
-					{
-						cubePositions[cubeInstances] = posFloat;
-						cubeInstances++;
-					}
-
+					
 					pos[j] += up * 2;
 				}
 
@@ -701,7 +756,7 @@ void App1::BuildTunnel(XMVECTOR direction, XMFLOAT3* cubePositions, int& cubeIns
 
 	//Round the xand y values of position to the nearest integer but not the z
 	//as this can cause gaps between room and tunnel
-	startPosition = XMVectorRound(startPosition);
+	//startPosition = XMVectorRound(startPosition);
 	/*XMStoreFloat3(&posFloat, position);
 	float posZ = posFloat.z;
 	
