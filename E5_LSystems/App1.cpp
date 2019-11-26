@@ -33,7 +33,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	camera->setRotation(0.0f, 0.0f, 0.0f);
 	
 	//Build the LSystem
-	lSystem.AddRule('A', "{&F}R{&F}A");
+	lSystem.AddRule('A', "{/F}R{&F}A");
 	lSystem.AddRule('C', "A{&F}R{&F}A");
 	lSystem.Run(8);
 
@@ -270,9 +270,9 @@ void App1::BuildLine()
 		case '/':
 			//pick a random number between 60 and 120 then rotate around the current direction 
 			//by the chosen number of degrees
-			val = ((rand() % 60) + 60);
+			val = ((rand() % 50) - 25);
 
-			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(val));
+			rotation *= XMMatrixRotationAxis(endRight, AI_DEG_TO_RAD(val));
 			break;
 
 		case '\\':
@@ -280,7 +280,7 @@ void App1::BuildLine()
 			//by the chosen number of degrees
 			val = -((rand() % 60) + 60);
 
-			rotation *= XMMatrixRotationAxis(dir, AI_DEG_TO_RAD(val));
+			rotation *= XMMatrixRotationAxis(endRight, AI_DEG_TO_RAD(val));
 			break;
 
 		case 'S':
@@ -304,18 +304,24 @@ void App1::BuildLine()
 			//Choose the second corner based on the first random corner such that the exit wall
 			//is never the same wall as the entrance wall
 			//i.e. if endCornerOne == 1, endCornerTwo = 2 else if endCornerOne == 2, endCornerTwo = 3 else endCornerOne == 3, endCornerTwo = 0 
+			//Also set forward and right vectors based on which wall was selected for the exit
 			switch (endCornerOne)
 			{
 			case 1:
+				endFwd = right;
 				endCornerTwo = 2;
 				break;
 			case 2:
+				endFwd = fwd;
 				endCornerTwo = 3;
 				break;
 			case 3:
+				endFwd = -right;
 				endCornerTwo = 0;
 				break;
 			}
+
+			endRight = XMVector3Cross(up, endFwd);
 
 			XMVECTOR endVec = corners[endCornerOne] - corners[endCornerTwo];
 			XMVECTOR wallDirection = XMVector3Normalize(endVec);
@@ -326,26 +332,15 @@ void App1::BuildLine()
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
 			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
+			//Set the end point on the chosen wall by moving from one of the corners along the wallDirection vector
+			//by the randomly chosen exitPoint value
 			startPosition = pos;
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
 			endPosition = pos;
 
-			switch (endCornerOne)
-			{
-			case 1:
-				endFwd = right;
-				break;
-			case 2:
-				endFwd = fwd;
-				break;
-			case 3:
-				endFwd = right * -1;
-				break;
-			}
-
-			endRight = XMVector3Cross(up, endFwd);
-
-			int height = (rand() % 20) + 8;
+			//Randomly select a height between 8 and 18, the value needs to be even as the cubes are
+			//2 units on each side
+			int height = (rand() % 10) + 8;
 			height = (height % 2 == 1 ? height + 1 : height);
 
 			//Build a room using the corners provided
@@ -378,18 +373,24 @@ void App1::BuildLine()
 			//Choose the second corner based on the first random corner such that the exit wall
 			//is never the same wall as the entrance wall
 			//i.e. if endCornerOne == 1, endCornerTwo = 2 else if endCornerOne == 2, endCornerTwo = 3 else endCornerOne == 3, endCornerTwo = 0 
+			//Also set up forward and right vectors based on which wall the exit is on
 			switch (endCornerOne)
 			{
 			case 1:
+				endFwd = right;
 				endCornerTwo = 2;
 				break;
 			case 2:
+				endFwd = fwd;
 				endCornerTwo = 3;
 				break;
 			case 3:
+				endFwd = -right;
 				endCornerTwo = 0;
 				break;
 			}
+
+			endRight = XMVector3Cross(up, endFwd);
 
 			XMVECTOR endVec = corners[endCornerOne] - corners[endCornerTwo];
 			XMVECTOR wallDirection = XMVector3Normalize(endVec);
@@ -400,33 +401,24 @@ void App1::BuildLine()
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
 			//Make sure the exitPoint is even as each cube is 2 units in width
 			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
-
+			
+			//Set the end point on the chosen wall by moving from one of the corners along the wallDirection vector
+			//by the randomly chosen exitPoint value
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
 			endPosition = pos;
 
-			switch (endCornerOne)
-			{
-			case 1:
-				endFwd = right;
-				break;
-			case 2:
-				endFwd = fwd;
-				break;
-			case 3:
-				endFwd = right * -1;
-				break;
-			}
-
-			endRight = XMVector3Cross(up, endFwd);
-
-			int height = (rand() % 20) + 8;
+			//Randomly select a height between 8 and 18, the value needs to be even as the cubes are
+			//2 units on each side
+			int height = (rand() % 10) + 8;
 			height = (height % 2 == 1 ? height + 1 : height);
 
 			//Build a room using the corners provided
 			BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, height);
 
+			//Set the new forward and right vectors based on which wall the exit was on
 			fwd = endFwd;
 			right = endRight;
+
 			//Set the next start position to the current end position in the case that 2 rooms are placed one after the other
 			startPosition = endPosition;
 			break;
@@ -441,73 +433,21 @@ void App1::BuildLine()
 			corners[2] = corner = XMVector3Transform(corner, XMMatrixTranslationFromVector(fwd * 30)); //Top right
 			corners[3] = corner = XMVector3Transform(corner, XMMatrixTranslationFromVector(right * -40)); //Top left
 
+			//End position isn't used for the final room so its value doesn't matter
 			XMVECTOR endPosition = XMVECTOR{ 0,0,0 };
 
-			int height = (rand() % 20) + 8;
+			//Randomly select a height between 8 and 18, the value needs to be even as the cubes are
+			//2 units on each side
+			int height = (rand() % 10) + 8;
 			height = (height % 2 == 1 ? height + 1 : height);
 
 			BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, height);
-			////Set the pos vector back to the centre of the room on the back wall
-			////This will eventually be replaced by picking a random position on a wall
-			//XMFLOAT3 endFloat;
-			//XMVECTOR endPosition;
-			////Pick a random corner for the exit wall
-			//int endCornerOne = (rand() % 3) + 1;
-			//int endCornerTwo;
-
-			////Choose the second corner based on the first random corner such that the exit wall
-			////is never the same wall as the entrance wall
-			////i.e. if endCornerOne == 1, endCornerTwo = 2 else if endCornerOne == 2, endCornerTwo = 3 else endCornerOne == 3, endCornerTwo = 0 
-			//switch (endCornerOne)
-			//{
-			//case 1:
-			//	endCornerTwo = 2;
-			//	break;
-			//case 2:
-			//	endCornerTwo = 3;
-			//	break;
-			//case 3:
-			//	endCornerTwo = 0;
-			//	break;
-			//}
-
-			//XMVECTOR endVec = corners[endCornerOne] - corners[endCornerTwo];
-			//XMVECTOR wallDirection = XMVector3Normalize(endVec);
-			//endVec = XMVector3Length(endVec);
-			//XMStoreFloat3(&endFloat, endVec);
-			////make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
-			////on either side of the wall that is not allowed to be the exit point
-			//int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
-			//exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
-
-			//pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
-			//endPosition = pos;
-
-			//switch (endCornerOne)
-			//{
-			//case 1:
-			//	endFwd = right;
-			//	break;
-			//case 2:
-			//	endFwd = fwd;
-			//	break;
-			//case 3:
-			//	endFwd = right * -1;
-			//	break;
-			//}
-
-			//endRight = XMVector3Cross(up, endFwd);
-
-			////Build a room using the corners provided
-			//BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, 10.f);
-
-			//fwd = endFwd;
-			//right = endRight;
 			break;
 		}
 		}
 	}
 
+	//Set up the buffers required to draw all the cubes created and then clean up the arrays
 	m_InstancedCube->initBuffers(renderer->getDevice(), cubePos, instanceCount);
 	m_InstancedCubeFloor->initBuffers(renderer->getDevice(), floorCubes, floorInstanceCount);
 
@@ -517,7 +457,7 @@ void App1::BuildLine()
 	floorCubes = 0;
 }
 
-//Corners must be in order bottom left -> bottom right -> top right -> top left
+//Corners must be in order (bottom left -> bottom right -> top right -> top left) when looking from top-down
 void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMFLOAT3* cubeFloorPositions, XMVECTOR endPos, int& cubeInstances, int& cubeFloorInstances, int height)
 {
 	XMFLOAT3 lengths[4];
