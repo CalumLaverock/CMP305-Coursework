@@ -7,9 +7,7 @@
 App1::App1():
 	lSystem("S")
 {
-	m_Line = nullptr;
 	m_InstanceShader = nullptr;
-	shader = nullptr;
 }
 
 void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeight, Input *in, bool VSYNC, bool FULL_SCREEN)
@@ -19,14 +17,11 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	// Call super/parent init function (required!)
 	BaseApplication::init(hinstance, hwnd, screenWidth, screenHeight, in, VSYNC, FULL_SCREEN);
 
-	textureMgr->loadTexture(L"grass", L"res/grass.png");
-	textureMgr->loadTexture(L"brick", L"res/Brick.png");
-
-	// Create Mesh object and shader object
-	m_Line = new LineMesh(renderer->getDevice(), renderer->getDeviceContext());
-	shader = new LightShader(renderer->getDevice(), hwnd);
+	textureMgr->loadTexture(L"wood", L"res/ground_01.png");
+	textureMgr->loadTexture(L"brick", L"res/ground_06.png");
 
 	m_InstancedCube = new InstancedCubeMesh(renderer->getDevice(), renderer->getDeviceContext(), 1);
+	m_InstancedCubeFloor = new InstancedCubeMesh(renderer->getDevice(), renderer->getDeviceContext(), 1);
 	m_InstanceShader = new InstanceShader(renderer->getDevice(), hwnd);
 
 	light = new Light;
@@ -34,7 +29,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	light->setDiffuseColour(0.75f, 0.75f, 0.75f, 1.0f);
 	light->setDirection(1.0f,-0.0f, 0.0f);
 
-	camera->setPosition(0.0f, 2.0f, -15.0f);
+	camera->setPosition(0.0f, 6.0f, 5.0f);
 	camera->setRotation(0.0f, 0.0f, 0.0f);
 	
 	//Build the LSystem
@@ -53,16 +48,6 @@ App1::~App1()
 	BaseApplication::~BaseApplication();
 
 	// Release the Direct3D object.
-	if (m_Line)
-	{
-		delete m_Line;
-		m_Line = 0;
-	}
-	if (shader)
-	{
-		delete shader;
-		shader = 0;
-	}
 }
 
 
@@ -100,17 +85,13 @@ bool App1::render()
 	viewMatrix = camera->getViewMatrix();
 	projectionMatrix = renderer->getProjectionMatrix();
 
-	//All our lines are drawn with the same shader parameters, so we can call this once
-	shader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"grass"), light);
-	//Send each line segment seperately for rendering
-	for (int i = 0; i < m_Line->GetLineCount(); i++) {
-		m_Line->sendData(renderer->getDeviceContext(), i);
-		shader->render(renderer->getDeviceContext(), m_Line->getIndexCount());
-	}
-
 	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"brick"), light);
 	m_InstancedCube->sendDataInstanced(renderer->getDeviceContext());
 	m_InstanceShader->renderInstanced(renderer->getDeviceContext(), m_InstancedCube->getIndexCount(), m_InstancedCube->GetInstanceCount());
+
+	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"wood"), light);
+	m_InstancedCubeFloor->sendDataInstanced(renderer->getDeviceContext());
+	m_InstanceShader->renderInstanced(renderer->getDeviceContext(), m_InstancedCubeFloor->getIndexCount(), m_InstancedCubeFloor->GetInstanceCount());
 	
 	// Render GUI
 	gui();
@@ -184,9 +165,12 @@ void App1::BuildLine()
 
 	const int width = 64;
 	const int maxCubes = width * width * width * width;
+
 	int instanceCount = 0;
+	int floorInstanceCount = 0;
 
 	XMFLOAT3* cubePos = new XMFLOAT3[maxCubes];
+	XMFLOAT3* floorCubes = new XMFLOAT3[maxCubes];
 
 	std::string line;
 	int val;
@@ -206,9 +190,6 @@ void App1::BuildLine()
 
 	std::stack<XMVECTOR> savePoint;
 	std::stack<XMMATRIX> rotationStack;
-
-	//Clear any lines we might already have
-	m_Line->Clear();
 
 	//Get the current L-System string
 	std::string systemString = lSystem.GetCurrentSystem();
@@ -244,7 +225,7 @@ void App1::BuildLine()
 			dir = XMVector3Transform(fwd, rotation);
 
 			//Build a tunnel when F is found
-			BuildTunnel(dir, cubePos, instanceCount);
+			BuildTunnel(dir, cubePos, floorCubes, instanceCount, floorInstanceCount);
 			break;
 
 		case '[':
@@ -364,8 +345,11 @@ void App1::BuildLine()
 
 			endRight = XMVector3Cross(up, endFwd);
 
+			int height = (rand() % 20) + 8;
+			height = (height % 2 == 1 ? height + 1 : height);
+
 			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+			BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, height);
 
 			fwd = endFwd;
 			right = endRight;
@@ -414,6 +398,7 @@ void App1::BuildLine()
 			//make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
 			//on either side of the wall that is not allowed to be the exit point
 			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
+			//Make sure the exitPoint is even as each cube is 2 units in width
 			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
 			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
@@ -434,8 +419,11 @@ void App1::BuildLine()
 
 			endRight = XMVector3Cross(up, endFwd);
 
+			int height = (rand() % 20) + 8;
+			height = (height % 2 == 1 ? height + 1 : height);
+
 			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+			BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, height);
 
 			fwd = endFwd;
 			right = endRight;
@@ -453,75 +441,84 @@ void App1::BuildLine()
 			corners[2] = corner = XMVector3Transform(corner, XMMatrixTranslationFromVector(fwd * 30)); //Top right
 			corners[3] = corner = XMVector3Transform(corner, XMMatrixTranslationFromVector(right * -40)); //Top left
 
-			//Set the pos vector back to the centre of the room on the back wall
-			//This will eventually be replaced by picking a random position on a wall
-			XMFLOAT3 endFloat;
-			XMVECTOR endPosition;
-			//Pick a random corner for the exit wall
-			int endCornerOne = (rand() % 3) + 1;
-			int endCornerTwo;
+			XMVECTOR endPosition = XMVECTOR{ 0,0,0 };
 
-			//Choose the second corner based on the first random corner such that the exit wall
-			//is never the same wall as the entrance wall
-			//i.e. if endCornerOne == 1, endCornerTwo = 2 else if endCornerOne == 2, endCornerTwo = 3 else endCornerOne == 3, endCornerTwo = 0 
-			switch (endCornerOne)
-			{
-			case 1:
-				endCornerTwo = 2;
-				break;
-			case 2:
-				endCornerTwo = 3;
-				break;
-			case 3:
-				endCornerTwo = 0;
-				break;
-			}
+			int height = (rand() % 20) + 8;
+			height = (height % 2 == 1 ? height + 1 : height);
 
-			XMVECTOR endVec = corners[endCornerOne] - corners[endCornerTwo];
-			XMVECTOR wallDirection = XMVector3Normalize(endVec);
-			endVec = XMVector3Length(endVec);
-			XMStoreFloat3(&endFloat, endVec);
-			//make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
-			//on either side of the wall that is not allowed to be the exit point
-			int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
-			exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
+			BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, height);
+			////Set the pos vector back to the centre of the room on the back wall
+			////This will eventually be replaced by picking a random position on a wall
+			//XMFLOAT3 endFloat;
+			//XMVECTOR endPosition;
+			////Pick a random corner for the exit wall
+			//int endCornerOne = (rand() % 3) + 1;
+			//int endCornerTwo;
 
-			pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
-			endPosition = pos;
+			////Choose the second corner based on the first random corner such that the exit wall
+			////is never the same wall as the entrance wall
+			////i.e. if endCornerOne == 1, endCornerTwo = 2 else if endCornerOne == 2, endCornerTwo = 3 else endCornerOne == 3, endCornerTwo = 0 
+			//switch (endCornerOne)
+			//{
+			//case 1:
+			//	endCornerTwo = 2;
+			//	break;
+			//case 2:
+			//	endCornerTwo = 3;
+			//	break;
+			//case 3:
+			//	endCornerTwo = 0;
+			//	break;
+			//}
 
-			switch (endCornerOne)
-			{
-			case 1:
-				endFwd = right;
-				break;
-			case 2:
-				endFwd = fwd;
-				break;
-			case 3:
-				endFwd = right * -1;
-				break;
-			}
+			//XMVECTOR endVec = corners[endCornerOne] - corners[endCornerTwo];
+			//XMVECTOR wallDirection = XMVector3Normalize(endVec);
+			//endVec = XMVector3Length(endVec);
+			//XMStoreFloat3(&endFloat, endVec);
+			////make the exit point a random value on the selected wall with a gap of 2 cubes (each of width 2, hence the range being 6 -> wall length - 6) 
+			////on either side of the wall that is not allowed to be the exit point
+			//int exitPoint = (rand() % ((int)endFloat.x - 12)) + 6;
+			//exitPoint = (exitPoint % 2 == 1 ? exitPoint + 1 : exitPoint);
 
-			endRight = XMVector3Cross(up, endFwd);
+			//pos = XMVector3Transform(corners[endCornerTwo], XMMatrixTranslationFromVector(wallDirection * exitPoint));
+			//endPosition = pos;
 
-			//Build a room using the corners provided
-			BuildRoom(corners, cubePos, endPosition, instanceCount, 10.f);
+			//switch (endCornerOne)
+			//{
+			//case 1:
+			//	endFwd = right;
+			//	break;
+			//case 2:
+			//	endFwd = fwd;
+			//	break;
+			//case 3:
+			//	endFwd = right * -1;
+			//	break;
+			//}
 
-			fwd = endFwd;
-			right = endRight;
+			//endRight = XMVector3Cross(up, endFwd);
+
+			////Build a room using the corners provided
+			//BuildRoom(corners, cubePos, floorCubes, endPosition, instanceCount, floorInstanceCount, 10.f);
+
+			//fwd = endFwd;
+			//right = endRight;
 			break;
 		}
 		}
 	}
 
 	m_InstancedCube->initBuffers(renderer->getDevice(), cubePos, instanceCount);
+	m_InstancedCubeFloor->initBuffers(renderer->getDevice(), floorCubes, floorInstanceCount);
 
 	delete[] cubePos;
+	delete[] floorCubes;
 	cubePos = 0;
+	floorCubes = 0;
 }
 
 //Corners must be in order bottom left -> bottom right -> top right -> top left
-void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos, int& cubeInstances, float height)
+void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMFLOAT3* cubeFloorPositions, XMVECTOR endPos, int& cubeInstances, int& cubeFloorInstances, int height)
 {
 	XMFLOAT3 lengths[4];
 	XMVECTOR walls[4];
@@ -592,15 +589,15 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos
 					for (int k = 0; k < lengths[0].x / 2; k++)
 					{
 						XMStoreFloat3(&floorPos, floorBuilder);
-						cubePositions[cubeInstances] = floorPos;
-						cubeInstances++;
+						cubeFloorPositions[cubeFloorInstances] = floorPos;
+						cubeFloorInstances++;
 
 						floorBuilder += right * 2;
 					}
 				}
 
 				//Build the walls
-				for (int k = 0; k < (int)height / 2; k++)
+				for (int k = 0; k < height / 2; k++)
 				{
 					XMStoreFloat3(&posFloat, pos[j]);
 					//calculate the components of the current position and the end/start positions
@@ -625,13 +622,17 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos
 					XMVECTOR posStartRight = XMVectorMultiply(right, pos[j]);
 					XMVECTOR startPosStartRight = XMVectorMultiply(right, startPosition);
 
+					XMVECTOR posUp = XMVectorMultiply(up, pos[j]);
+					XMVECTOR startUp = XMVectorMultiply(up, startPosition);
+					XMVECTOR endUp = XMVectorMultiply(up, endPos);
+
 					//If both points have same component on fwd axis then both points are on the same wall
 					if (XMVector3Equal(posEndFwd, endPosEndFwd))
 					{
 						//If the current position is greater/less than the end position +/- 4 on the right axis
 						//then draw a cube AND we are not in the End room, else don't draw a cube
 						if ((XMVector3GreaterOrEqual(posEndRight, endPosEndRight + (endRight * 4)) || XMVector3LessOrEqual(posEndRight, endPosEndRight - (endRight * 4))) ||
-							(posFloat.y > endPosFloat.y + 6))
+							(XMVector3GreaterOrEqual(posUp, endUp + (up * 8))))
 						{
 							cubePositions[cubeInstances] = posFloat;
 							cubeInstances++;
@@ -647,7 +648,7 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos
 						//If the current position is greater/less than the start position +/- 4 on the right axis
 						//then draw a cube AND we are not in the Start room, else don't draw a cube
 						if ((XMVector3GreaterOrEqual(posStartRight, startPosStartRight + (right * 4)) || XMVector3LessOrEqual(posStartRight, startPosStartRight - (right * 4))) ||
-							(posFloat.y > startPosFloat.y + 6))
+							(XMVector3GreaterOrEqual(posUp, startUp + (up * 8))))
 						{
 							cubePositions[cubeInstances] = posFloat;
 							cubeInstances++;
@@ -692,7 +693,7 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMVECTOR endPos
 	}
 }
 
-void App1::BuildTunnel(XMVECTOR direction, XMFLOAT3* cubePositions, int& cubeInstances)
+void App1::BuildTunnel(XMVECTOR direction, XMFLOAT3* cubePositions, XMFLOAT3* cubeFloorPositions, int& cubeInstances, int& cubeFloorInstances)
 {
 	XMFLOAT3 cubePosition;
 	XMVECTOR position;
@@ -706,8 +707,8 @@ void App1::BuildTunnel(XMVECTOR direction, XMFLOAT3* cubePositions, int& cubeIns
 		for (int j = 0; j < 3; j++)
 		{
 			XMStoreFloat3(&cubePosition, position);
-			cubePositions[cubeInstances] = cubePosition;
-			cubeInstances++;
+			cubeFloorPositions[cubeFloorInstances] = cubePosition;
+			cubeFloorInstances++;
 
 			position += right * 2;
 		}

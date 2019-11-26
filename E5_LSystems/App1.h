@@ -29,17 +29,15 @@ private:
 
 	void BuildLine();
 	void BuildCubeInstances();
-	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMVECTOR, int&, float);
-	void BuildTunnel(XMVECTOR, XMFLOAT3*, int&);
-
-	LightShader* shader;
-	LineMesh* m_Line;
+	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMFLOAT3*, XMVECTOR, int&, int&, int);
+	void BuildTunnel(XMVECTOR, XMFLOAT3*, XMFLOAT3*, int&, int&);
 
 	Light* light;
 	LSystem lSystem;
 
 	InstanceShader* m_InstanceShader;
 	InstancedCubeMesh* m_InstancedCube;
+	InstancedCubeMesh* m_InstancedCubeFloor;
 
 	int startingLine = 1;
 	int numIterate = 1;
