@@ -17,8 +17,8 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	// Call super/parent init function (required!)
 	BaseApplication::init(hinstance, hwnd, screenWidth, screenHeight, in, VSYNC, FULL_SCREEN);
 
-	textureMgr->loadTexture(L"wood", L"res/ground_01.png");
-	textureMgr->loadTexture(L"brick", L"res/ground_06.png");
+	textureMgr->loadTexture(L"floor", L"res/textures/floor.png");
+	textureMgr->loadTexture(L"walls", L"res/textures/walls.png");
 
 	m_InstancedCube = new InstancedCubeMesh(renderer->getDevice(), renderer->getDeviceContext(), 1);
 	m_InstancedCubeFloor = new InstancedCubeMesh(renderer->getDevice(), renderer->getDeviceContext(), 1);
@@ -85,11 +85,11 @@ bool App1::render()
 	viewMatrix = camera->getViewMatrix();
 	projectionMatrix = renderer->getProjectionMatrix();
 
-	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"brick"), light);
+	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"walls"), light);
 	m_InstancedCube->sendDataInstanced(renderer->getDeviceContext());
 	m_InstanceShader->renderInstanced(renderer->getDeviceContext(), m_InstancedCube->getIndexCount(), m_InstancedCube->GetInstanceCount());
 
-	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"wood"), light);
+	m_InstanceShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, textureMgr->getTexture(L"floor"), light);
 	m_InstancedCubeFloor->sendDataInstanced(renderer->getDeviceContext());
 	m_InstanceShader->renderInstanced(renderer->getDeviceContext(), m_InstancedCubeFloor->getIndexCount(), m_InstancedCubeFloor->GetInstanceCount());
 	
@@ -516,8 +516,8 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMFLOAT3* cubeF
 			distanceLeft = XMVector3Length(distanceLeft);
 			distanceLeft = XMVector3Normalize(distanceLeft);
 
-			//Pretty much this whole if statement is super janky and probably inefficient, 
-			//please fix this if you have time, that said... IT WORKS!
+			//DistanceLeft will occasionally jump over {0,0,0} so the wall will be the length of the longest wall
+			//I don't have time to fix this right now
 			if (XMVector3Greater(distanceLeft, XMVECTOR{ 0,0,0 }))
 			{
 				//Build the floor
