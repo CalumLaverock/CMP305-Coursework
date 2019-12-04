@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DXF.h"
+#include "../DXFramework/DXF.h"
 
 using namespace std;
 using namespace DirectX;
