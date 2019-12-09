@@ -113,6 +113,8 @@ void App1::gui()
 	ImGui::Text( "Camera Pos: (%.2f, %.2f, %.2f)", camera->getPosition().x, camera->getPosition().y, camera->getPosition().z );
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
+	ImGui::Text(lSystem.GetCurrentSystem().c_str());
+
 	ImGui::SliderInt("Number of rooms", &startingLine, 0, 10);
 	ImGui::SliderInt("Length of tunnels", &numIterate, 0, 10);
 
@@ -213,6 +215,7 @@ void App1::BuildLine()
 		case '&':
 			//pick a random number between -25 and 25 then rotate around the y-axis
 			//by the chosen number of degrees (i.e. turn to the left or right)
+			//Rotation will only affect tunnels as rooms don't use the dir vector
 			val = ((rand() % 50) - 25);
 
 			rotation = XMMatrixRotationAxis(fwdY, AI_DEG_TO_RAD(val)) * rotation; //This one needs to be rotated in this order, for some reason...
@@ -221,9 +224,10 @@ void App1::BuildLine()
 		case '/':
 			//pick a random number between -25 and 25 then rotate around the end position's right axis
 			//by the chosen number of degrees (i.e. create an incline or decline)
+			//Rotation will only affect tunnels as rooms don't use the dir vector
 			val = ((rand() % 50) - 25);
 
-			rotation *= XMMatrixRotationAxis(endRight, AI_DEG_TO_RAD(val));
+			rotation *= XMMatrixRotationAxis(right, AI_DEG_TO_RAD(val));
 			break;
 
 		case 'S':
