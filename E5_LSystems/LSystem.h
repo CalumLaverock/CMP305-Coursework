@@ -22,4 +22,3 @@ private:
 	 std::map<char, string> m_Rules;
 	 
 };
-

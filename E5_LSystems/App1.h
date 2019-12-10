@@ -4,8 +4,6 @@
 
 // Includes
 #include "../DXFramework/DXF.h"
-#include "LightShader.h"
-#include "LineMesh.h"
 #include "LSystem.h"
 #include "InstanceShader.h"
 #include "InstancedCubeMesh.h"
@@ -26,8 +24,7 @@ protected:
 	void gui();
 
 private:
-
-	void BuildLine();
+	void BuildDungeon();
 	void BuildRoom(XMVECTOR*, XMFLOAT3*, XMFLOAT3*, XMVECTOR, int&, int&, int);
 	void BuildTunnel(XMVECTOR, XMFLOAT3*, XMFLOAT3*, int&, int&);
 

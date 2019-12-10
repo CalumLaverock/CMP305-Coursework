@@ -1,5 +1,3 @@
-// Lab1.cpp
-// Lab 1 example, simple coloured triangle mesh
 #include "App1.h"
 #include <stack>
 #include <ctime>
@@ -36,7 +34,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	lSystem.AddRule('A', "{/&FFF}A");
 
 	//Build the lines to be rendered
-	BuildLine();
+	BuildDungeon();
 }
 
 
@@ -110,17 +108,15 @@ void App1::gui()
 
 	// Build UI
 	ImGui::Text("FPS: %.2f", timer->getFPS());
-	ImGui::Text( "Camera Pos: (%.2f, %.2f, %.2f)", camera->getPosition().x, camera->getPosition().y, camera->getPosition().z );
+	ImGui::Text("Camera Pos: (%.2f, %.2f, %.2f)", camera->getPosition().x, camera->getPosition().y, camera->getPosition().z );
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
-
-	ImGui::Text(lSystem.GetCurrentSystem().c_str());
 
 	ImGui::SliderInt("Number of rooms", &startingLine, 0, 10);
 	ImGui::SliderInt("Length of tunnels", &numIterate, 0, 10);
 
 	if (ImGui::Button("Build Dungeon"))
 	{
-		BuildLine();
+		BuildDungeon();
 	}
 
 	// Render UI
@@ -128,10 +124,8 @@ void App1::gui()
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void App1::BuildLine()
+void App1::BuildDungeon()
 {
-	using namespace DirectX;
-
 	const int width = 64;
 	const int maxCubes = width * width * width * width;
 
@@ -139,9 +133,13 @@ void App1::BuildLine()
 	int instanceCount = 0;
 	int floorInstanceCount = 0;
 
+	//Give the floor 1/4 of the max cubes as there are less floor cubes than wall/roof cubes
+	int maxFloor = round(maxCubes * 0.25);
+	int maxWalls = round(maxCubes * 0.75);
+
 	//arrays of cube positions
-	XMFLOAT3* cubePos = new XMFLOAT3[maxCubes];
-	XMFLOAT3* floorCubes = new XMFLOAT3[maxCubes];
+	XMFLOAT3* cubePos = new XMFLOAT3[maxWalls];
+	XMFLOAT3* floorCubes = new XMFLOAT3[maxFloor];
 
 	std::string line;
 	int val;
@@ -556,6 +554,7 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMFLOAT3* cubeF
 							cubeInstances++;
 						}
 					}
+					//If both points have same component on fwd axis then both points are on the same wall
 					else if (XMVector3Equal(posStartFwd, startPosStartFwd))
 					{
 						//If the current position is greater/less than the start position +/- 4 on the right axis
@@ -575,7 +574,7 @@ void App1::BuildRoom(XMVECTOR* corners, XMFLOAT3* cubePositions, XMFLOAT3* cubeF
 							cubeInstances++;
 						}
 					}
-					//If the point isn't on the start or end walls then alwats draw a cube
+					//If the point isn't on the start or end walls then always draw a cube
 					else
 					{
 						cubePositions[cubeInstances] = posFloat;
